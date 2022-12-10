@@ -7,7 +7,7 @@
 vouch:
   logLevel: info
   testing: false
-  listen: 0.0.0.0
+  listen: 127.0.0.1
   port: 9090
   # document_root:
   # domains:

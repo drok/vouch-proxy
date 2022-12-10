@@ -181,7 +181,7 @@ func Configure() {
 	Logging.configureFromCmdline()
 
 	setRootDir()
-	secretFile = filepath.Join(RootDir, "config/secret")
+	secretFile = filepath.Join(RootDir, "secret")
 
 	// bail if we're testing
 	if flag.Lookup("test.v") != nil {

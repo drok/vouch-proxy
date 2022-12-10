@@ -1,12 +1,13 @@
 [Unit]
-Description=Vouch Proxy
+Description=OAuth2 Authentication Proxy
 After=network.target
 
 [Service]
 Type=simple
 User=vouch-proxy
-WorkingDirectory=/opt/vouch-proxy
-ExecStart=/opt/vouch-proxy/vouch-proxy
+Environment="VOUCH_ROOT=/var/lib/vouch-proxy"
+WorkingDirectory=/var/lib/vouch-proxy
+ExecStart=/usr/sbin/vouch-proxy -config /etc/vouch-proxy/config
 Restart=on-failure
 RestartSec=5
 StartLimitInterval=60s

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+VERSION=0.37.3
+
 # change dir to where this script is running
 CURDIR=${PWD}
 SCRIPT=$(readlink -f "$0")
@@ -23,13 +25,12 @@ run () {
 }
 
 build () {
-  local VERSION=$(git describe --always --long)
   local DT=$(date -u +"%Y-%m-%dT%H:%M:%SZ") # ISO-8601
   local FQDN=$(_hostname)
-  local SEMVER=$(git tag --list --sort="v:refname" | tail -n -1)
-  local BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  local SEMVER=v$VERSION
+  local BRANCH="release/0.37"
   local UNAME=$(uname)
-  go build -v -ldflags=" -X main.version=${VERSION} -X main.uname=${UNAME} -X main.builddt=${DT} -X main.host=${FQDN} -X main.semver=${SEMVER} -X main.branch=${BRANCH}" .
+  go build -v -ldflags="-B 0x$(head -c20 /dev/urandom|od -An -tx1|tr -d ' \n') -X main.version=v${VERSION} -X main.uname=${UNAME} -X main.builddt=${DT} -X main.host=${FQDN} -X main.semver=${SEMVER} -X main.branch=${BRANCH}" -x .
 }
 
 _hostname() {
@@ -52,6 +53,16 @@ _hostname() {
 
 install () {
   cp ./vouch-proxy ${GOPATH}/bin/vouch-proxy
+}
+
+dist () {
+set -x
+  tar --transform=s@^@vouch-proxy-$VERSION/@ -czf vouch-proxy-$VERSION.tar.gz \
+    LICENSE README.md SECURITY.md \
+    templates static pkg handlers examples config \
+    go.mod go.sum main.go do.sh \
+    AUTHORS.txt CHANGELOG.md CONTRIBUTING.md Dockerfile Dockerfile.alpine \
+    .defaults.yml
 }
 
 gogo () {
@@ -307,7 +318,7 @@ license() {
   fi
   FOUND=$(_has_license $FILE)
   if [ -z "${FOUND}" ]; then
-    local YEAR=$(git log -1 --format="%ai" -- $FILE | cut -d- -f1);
+    local YEAR=$(date +%Y);
     _print_license $YEAR > ${FILE}_licensed
     cat $FILE >> ${FILE}_licensed
     mv ${FILE}_licensed $FILE
@@ -378,6 +389,7 @@ usage() {
      $0 run                                - go run main.go
      $0 build                              - go build
      $0 install                            - move binary to ${GOPATH}/bin/vouch
+     $0 dist                               - create distribution tarball
      $0 goget                              - get all dependencies
      $0 gofmt                              - gofmt the entire code base
      $0 gosec                              - gosec security audit of the entire code base
@@ -414,6 +426,7 @@ case "$ARG" in
    |'dbuildalpine' \
    |'drunalpine' \
    |'install' \
+   |'dist' \
    |'test' \
    |'goget' \
    |'selfcert' \

@@ -1,0 +1,119 @@
+%global _dwz_low_mem_die_limit 0
+
+Name:           vouch-proxy
+Version:        0.37.3
+Release:        1%{?dist}
+Summary:        An SSO and OAuth / OIDC login solution for Nginx using the auth_request module
+
+Group:          Applications/File
+License:        mit
+URL:            https://github.com/vouch/%{name}
+Source0:        https://github.com/vouch/%{name}/archive/refs/tags/v%{version}.tar.gz
+
+BuildRequires:  golang >= 1.16
+Requires:       nginx
+Requires(pre): shadow-utils
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+
+
+%description
+An SSO solution for Nginx using the auth_request module. Vouch Proxy can
+protect all of your websites at once.
+
+Vouch Proxy supports many OAuth and OIDC login providers and can enforce
+authentication to...
+
+- Google
+- GitHub
+- GitHub Enterprise
+- IndieAuth
+- Okta
+- Slack
+- ADFS
+- Azure AD
+- Alibaba / Aliyun iDaas
+- AWS Cognito
+- Twitch
+- Discord
+- SecureAuth
+- Gitea
+- Keycloak
+- OAuth2 Server Library for PHP
+- HomeAssistant
+- OpenStax
+- Ory Hydra
+- Nextcloud
+- most other OpenID Connect (OIDC) providers
+
+If Vouch is running on the same host as the Nginx reverse proxy the response
+time from the /validate endpoint to Nginx should be less than 1ms.
+
+%prep
+%setup -q
+
+%build
+./do.sh goget
+./do.sh build
+
+%install
+rm -rf $RPM_BUILD_ROOT
+install -p -D %{name} $RPM_BUILD_ROOT%{_sbindir}/%{name}
+# install -p -D man/%{name}.1 -m 0644 $RPM_BUILD_ROOT%{_datadir}/man/man1/%{name}.1
+install -p -D -m 0644 examples/startup/systemd/vouch-proxy.service  %{buildroot}%{_unitdir}/%{name}.service
+
+
+%check
+VOUCH_ROOT=${PWD} ./do.sh test
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%pre
+if [ "$1" -eq "1" ]; then
+    getent group %{name} >/dev/null || groupadd -r %{name}
+    getent passwd %{name} >/dev/null || \
+        useradd --system --gid %{name} \
+            --create-home --home-dir %{_sharedstatedir}/%{name} \
+            --shell /sbin/nologin \
+            --skel %{_datadir}/%{name} \
+        -c "OAuth2 Authentication Proxy" %{name}
+    exit 0
+fi
+
+%post
+%systemd_post nginx.service %{name}.service
+
+%preun
+%systemd_preun nginx.service %{name}.service
+
+%postun
+%systemd_postun nginx.service %{name}.service
+
+
+%files
+%defattr(-,root,root,-)
+%license LICENSE
+%doc README.md
+%doc SECURITY.md
+%doc CHANGELOG.md
+%doc CONTRIBUTING.md
+%doc examples
+%doc config
+# %doc config/config.yml_example*
+%{_sbindir}/%{name}
+%{_unitdir}/%{name}.service
+# %{_datadir}/man/man1/%{name}.*
+
+
+# %triggerin -- squid
+# if [ -f /etc/init/squid3.conf ] ; then
+#   /sbin/service squid3 reload >/dev/null 2>&1
+# else
+#   /sbin/service squid reload >/dev/null 2>&1
+# fi
+
+%changelog
+* Fri Dec 9 2022 Radu Hociung <radu.vouch@ohmi.org> - 0.37.3-1.ol7
+- Initial RPM packaging
